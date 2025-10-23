@@ -8,6 +8,7 @@ A GitHub composite action that automates the cleanup of transient deployment art
 - Removes Docker images from GitHub Container Registry (GHCR)
 - Removes Helm charts from GHCR (with `charts/` prefix)
 - Deletes GitHub deployment environments
+- Optional Kubernetes/Helm cleanup (uninstall Helm releases from K8s clusters)
 - Pure bash implementation using `gh` CLI (no JavaScript dependencies)
 - Supports multiple pattern types (rc, pr-based, custom)
 
@@ -71,6 +72,9 @@ jobs:
 | `docker-image-name`  | Custom Docker image name (defaults to repo name in lowercase)           | No       | -                                     |
 | `helm-chart-name`    | Custom Helm chart name (defaults to charts/{repo-name} in lowercase)    | No       | -                                     |
 | `environment-name`   | Custom environment name (defaults to 'staging' for rc, pattern for pr-) | No       | -                                     |
+| `kube-config`        | Kubernetes config file content for kubectl access (enables K8s cleanup) | No       | -                                     |
+| `namespace`          | Kubernetes namespace for Helm release                                   | No       | `preview`                             |
+| `helm`               | Helm release name to uninstall from Kubernetes cluster                  | No       | -                                     |
 
 ## Outputs
 
@@ -106,7 +110,18 @@ Removes Helm charts from GHCR where:
 
 Example: For repo `starburst997/s3-mirror-sample-app`, it cleans `ghcr.io/starburst997/charts/s3-mirror-sample-app:{version}`
 
-### 4. GitHub Environment Cleanup
+### 4. Kubernetes/Helm Cleanup (Optional)
+
+If `kube-config` is provided, the action will:
+
+- Set up `kubectl` and `helm` CLI tools
+- Configure kubectl with the provided kube config
+- Uninstall the specified Helm release from the Kubernetes namespace
+- Default namespace is `preview`, but can be customized with `namespace` input
+
+**This step is completely optional and will be skipped if `kube-config` is not provided.**
+
+### 5. GitHub Environment Cleanup
 
 Deletes the GitHub deployment environment:
 
@@ -255,6 +270,39 @@ jobs:
           pattern: ${{ matrix.pattern }}
           token: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+### Cleanup with Kubernetes/Helm
+
+```yaml
+name: Cleanup PR with Kubernetes
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      deployments: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cleanup PR artifacts and Kubernetes resources
+        uses: starburst997/cleanup-transient@v1
+        with:
+          pattern: pr-${{ github.event.pull_request.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          kube-config: ${{ secrets.KUBE_CONFIG }}
+          namespace: preview
+          helm: pr-${{ github.event.pull_request.number }}
+```
+
+> **Note:** If `kube-config` is not provided, the Kubernetes/Helm cleanup steps will be skipped automatically.
 
 ## Troubleshooting
 

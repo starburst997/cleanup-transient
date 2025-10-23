@@ -43,6 +43,9 @@ This is a GitHub composite action that automates the cleanup of transient deploy
 | `docker-image-name` | Custom Docker image name | string | No |
 | `helm-chart-name` | Custom Helm chart name | string | No |
 | `environment-name` | Custom environment name | string | No |
+| `kube-config` | Kubernetes config for kubectl (enables K8s cleanup) | string | No |
+| `namespace` | Kubernetes namespace | string | No (default: `preview`) |
+| `helm` | Helm release name to uninstall | string | No |
 
 ## Current Outputs
 
@@ -149,3 +152,4 @@ When publishing to GitHub Marketplace, use these categories:
 - No JavaScript/TypeScript dependencies required
 - Designed for cleanup of transient environments (PR-based, RC, etc.)
 - Supports both user and organization packages in GHCR
+- Optional Kubernetes/Helm cleanup (activated when `kube-config` input is provided)

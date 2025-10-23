@@ -30,6 +30,18 @@ inputs:
     description: "Custom environment name (defaults to 'staging' for rc, pattern for pr-XXX)"
     required: false
     default: ""
+  kube-config:
+    description: "Kubernetes config file content for kubectl access (if not set, Kubernetes cleanup is skipped)"
+    required: false
+    default: ""
+  namespace:
+    description: "Kubernetes namespace for Helm release (used when kube-config is provided)"
+    required: false
+    default: "preview"
+  helm:
+    description: "Helm release name to uninstall (used when kube-config is provided)"
+    required: false
+    default: ""
 
 outputs:
   versions:
@@ -62,6 +74,42 @@ runs:
             echo "$MARKDOWN"
             echo "EOF"
           } >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set up Helm
+      if: inputs.kube-config != ''
+      uses: azure/setup-helm@v4
+
+    - name: Setup kubectl
+      if: inputs.kube-config != ''
+      uses: azure/setup-kubectl@v4
+
+    - name: Configure kubectl
+      if: inputs.kube-config != ''
+      shell: bash
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ inputs.kube-config }}" > ~/.kube/config
+        chmod 600 ~/.kube/config
+        echo "✅ Configured kubectl"
+
+    - name: Cleanup Kubernetes/Helm resources
+      if: inputs.kube-config != ''
+      shell: bash
+      run: |
+        NAMESPACE="${{ inputs.namespace }}"
+        RELEASE_NAME="${{ inputs.helm }}"
+
+        # Verify kubectl connection
+        echo "Verifying kubectl connection..."
+        kubectl get pods -n "$NAMESPACE" || echo "No pods found or namespace doesn't exist"
+
+        # Uninstall Helm release if name is provided
+        if [ -n "$RELEASE_NAME" ]; then
+          echo "Uninstalling Helm release: $RELEASE_NAME in namespace: $NAMESPACE"
+          helm uninstall "$RELEASE_NAME" --namespace "$NAMESPACE" || echo "Helm release not found or already deleted"
+        else
+          echo "No Helm release name provided, skipping Helm cleanup"
         fi
 
     - name: Delete Git Tags
