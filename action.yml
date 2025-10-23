@@ -198,11 +198,17 @@ runs:
           PACKAGE_VERSIONS=$(gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/users/$OWNER/packages/container/$PACKAGE_NAME/versions" \
-            --jq ".[] | select(.metadata.container.tags[]? == \"$version\") | .id" 2>/dev/null || echo "")
+            "/users/$OWNER/packages/container/$PACKAGE_NAME/versions" 2>&1 \
+            | jq -r ".[] | select(.metadata.container.tags[]? == \"$version\") | .id" 2>/dev/null || echo "")
 
           if [ -n "$PACKAGE_VERSIONS" ]; then
             for package_id in $PACKAGE_VERSIONS; do
+              # Validate that package_id is numeric
+              if ! [[ "$package_id" =~ ^[0-9]+$ ]]; then
+                echo "Invalid package ID: $package_id (not a number), skipping"
+                continue
+              fi
+
               echo "Deleting Docker image version: $version (ID: $package_id)"
               gh api \
                 --method DELETE \
@@ -254,11 +260,17 @@ runs:
           PACKAGE_VERSIONS=$(gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/users/$OWNER/packages/container/$CHART_NAME/versions" \
-            --jq ".[] | select(.metadata.container.tags[]? == \"$version\") | .id" 2>/dev/null || echo "")
+            "/users/$OWNER/packages/container/$CHART_NAME/versions" 2>&1 \
+            | jq -r ".[] | select(.metadata.container.tags[]? == \"$version\") | .id" 2>/dev/null || echo "")
 
           if [ -n "$PACKAGE_VERSIONS" ]; then
             for package_id in $PACKAGE_VERSIONS; do
+              # Validate that package_id is numeric
+              if ! [[ "$package_id" =~ ^[0-9]+$ ]]; then
+                echo "Invalid package ID: $package_id (not a number), skipping"
+                continue
+              fi
+
               echo "Deleting Helm chart version: $version (ID: $package_id)"
               gh api \
                 --method DELETE \
@@ -298,14 +310,14 @@ runs:
           fi
         fi
 
-        echo "Attempting to delete deployments with description: $NAME"
+        echo "Attempting to delete all deployments with environment: $NAME"
 
-        # Get all deployment IDs that match the description (name)
+        # Get all deployment IDs for this environment
         DEPLOYMENT_IDS=$(gh api \
           -H "Accept: application/vnd.github+json" \
           -H "X-GitHub-Api-Version: 2022-11-28" \
-          "/repos/$OWNER/$REPO/deployments" \
-          --jq ".[] | select(.description == \"$NAME\") | .id" 2>/dev/null || echo "")
+          "/repos/$OWNER/$REPO/deployments?environment=$NAME" \
+          --jq '.[].id' 2>/dev/null || echo "")
 
         if [ -n "$DEPLOYMENT_IDS" ]; then
           echo "Found deployment IDs: $DEPLOYMENT_IDS"
@@ -330,13 +342,13 @@ runs:
               -H "Accept: application/vnd.github+json" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
               "/repos/$OWNER/$REPO/deployments/$DEPLOYMENT_ID" \
-              && echo "✓ Deleted deployment: $NAME (ID: $DEPLOYMENT_ID)" \
-              || echo "Failed to delete deployment: $NAME (ID: $DEPLOYMENT_ID)"
+              && echo "✓ Deleted deployment ID: $DEPLOYMENT_ID" \
+              || echo "Failed to delete deployment ID: $DEPLOYMENT_ID"
           done
 
-          echo "✓ Finished processing all deployments with description: $NAME"
+          echo "✓ Finished processing all deployments for environment: $NAME"
         else
-          echo "No deployments found with description: $NAME"
+          echo "No deployments found with environment name: $NAME"
         fi
 
 branding:
