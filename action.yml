@@ -194,11 +194,10 @@ runs:
           echo "Processing Docker image version: $version"
 
           # Try to find and delete the package version by tag
-          # List all versions and find the one with matching tag
           PACKAGE_VERSIONS=$(gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/users/$OWNER/packages/container/$PACKAGE_NAME/versions" 2>&1 \
+            "/user/packages/container/$PACKAGE_NAME/versions" 2>&1 \
             | jq -r ".[] | select(.metadata.container.tags[]? == \"$version\") | .id" 2>/dev/null || echo "")
 
           if [ -n "$PACKAGE_VERSIONS" ]; then
@@ -214,7 +213,7 @@ runs:
                 --method DELETE \
                 -H "Accept: application/vnd.github+json" \
                 -H "X-GitHub-Api-Version: 2022-11-28" \
-                "/users/$OWNER/packages/container/$PACKAGE_NAME/versions/$package_id" \
+                "/user/packages/container/$PACKAGE_NAME/versions/$package_id" \
                 && echo "✓ Deleted $version" \
                 || echo "Failed to delete $version"
             done
@@ -260,7 +259,7 @@ runs:
           PACKAGE_VERSIONS=$(gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/users/$OWNER/packages/container/$CHART_NAME/versions" 2>&1 \
+            "/user/packages/container/$CHART_NAME/versions" 2>&1 \
             | jq -r ".[] | select(.metadata.container.tags[]? == \"$version\") | .id" 2>/dev/null || echo "")
 
           if [ -n "$PACKAGE_VERSIONS" ]; then
@@ -276,7 +275,7 @@ runs:
                 --method DELETE \
                 -H "Accept: application/vnd.github+json" \
                 -H "X-GitHub-Api-Version: 2022-11-28" \
-                "/users/$OWNER/packages/container/$CHART_NAME/versions/$package_id" \
+                "/user/packages/container/$CHART_NAME/versions/$package_id" \
                 && echo "✓ Deleted $version" \
                 || echo "Failed to delete chart $version"
             done
