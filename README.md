@@ -66,6 +66,7 @@ jobs:
 | Input                | Description                                                             | Required | Default                               |
 | -------------------- | ----------------------------------------------------------------------- | -------- | ------------------------------------- |
 | `pattern`            | Pattern suffix to clean (e.g., "rc", "pr-123")                          | Yes      | -                                     |
+| `versions`           | Space-separated list of versions to clean (e.g., "1.0.0-rc.1 1.0.0-rc.2"). If not specified, versions are auto-detected from git tags matching the pattern | No       | -                                     |
 | `token`              | GitHub token with permissions to delete packages and environments       | No       | `${{ github.token }}`                 |
 | `registry`           | Container registry URL                                                  | No       | `ghcr.io`                             |
 | `username`           | Username or organization (defaults to repository owner)                 | No       | `${{ github.repository_owner }}`      |
@@ -225,6 +226,10 @@ on:
         description: "Pattern to clean (e.g., rc, pr-123)"
         required: true
         type: string
+      versions:
+        description: "Optional: space-separated versions to clean (e.g., '1.0.0-rc.1 1.0.0-rc.2')"
+        required: false
+        type: string
 
 jobs:
   cleanup:
@@ -243,6 +248,7 @@ jobs:
         uses: starburst997/cleanup-transient@v1
         with:
           pattern: ${{ inputs.pattern }}
+          versions: ${{ inputs.versions }}
           token: ${{ secrets.GITHUB_TOKEN }}
 ```
 

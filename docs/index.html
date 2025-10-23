@@ -485,6 +485,17 @@
             <h3>⚙️ General Configuration</h3>
 
             <div class="param-item">
+              <div class="param-name">versions</div>
+              <div class="param-desc">
+                Space-separated list of versions to clean. If not specified,
+                versions are auto-detected from git tags matching the pattern.
+              </div>
+              <div class="param-default">
+                Example: "1.0.0-rc.1 1.0.0-rc.2" (optional)
+              </div>
+            </div>
+
+            <div class="param-item">
               <div class="param-name">token</div>
               <div class="param-desc">
                 GitHub token with permissions to delete packages and

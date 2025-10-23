@@ -37,6 +37,7 @@ This is a GitHub composite action that automates the cleanup of transient deploy
 | Input | Description | Type | Required |
 |-------|-------------|------|----------|
 | `pattern` | Pattern suffix to clean (e.g., "rc", "pr-123") | string | Yes |
+| `versions` | Space-separated list of versions to clean. If not specified, versions are auto-detected from git tags | string | No |
 | `token` | GitHub token with permissions | string | No (default: `${{ github.token }}`) |
 | `registry` | Container registry URL | string | No (default: `ghcr.io`) |
 | `username` | Username or organization | string | No (default: `${{ github.repository_owner }}`) |
