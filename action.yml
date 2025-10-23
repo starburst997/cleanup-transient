@@ -168,9 +168,12 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
       run: |
+        # Enhanced deletion with comprehensive debugging
+
         VERSIONS="${{ steps.versions.outputs.versions }}"
         OWNER="${{ inputs.repo-owner }}"
         CUSTOM_IMAGE_NAME="${{ inputs.docker-image-name }}"
+        REGISTRY="${{ inputs.registry }}"
 
         # Convert to lowercase
         OWNER=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
@@ -188,26 +191,112 @@ runs:
           exit 0
         fi
 
-        echo "Cleaning Docker images for versions: $VERSIONS"
+        echo "========================================="
+        echo "Docker Image Deletion Configuration:"
+        echo "========================================="
+        echo "Registry: $REGISTRY"
+        echo "Owner: $OWNER"
+        echo "Package name: $PACKAGE_NAME"
+        echo "Versions to delete: $VERSIONS"
+        echo "========================================="
 
+        # First, let's check if we're using organization or user packages
+        # Try organization first
+        echo "Checking if this is an organization package..."
+        ORG_PACKAGES=$(gh api \
+          "/orgs/$OWNER/packages?package_type=container" \
+          --jq '.[].name' 2>/dev/null || echo "")
+
+        if echo "$ORG_PACKAGES" | grep -q "^$PACKAGE_NAME$"; then
+          PACKAGE_TYPE="org"
+          API_PREFIX="/orgs/$OWNER"
+          echo "✓ Found as organization package"
+        else
+          PACKAGE_TYPE="user"
+          API_PREFIX="/user"
+          echo "✓ Assuming user package (or using GITHUB_TOKEN)"
+        fi
+
+        echo "Package type: $PACKAGE_TYPE"
+        echo "API prefix: $API_PREFIX"
+
+        # List all available versions first for debugging
+        echo ""
+        echo "Fetching all available versions from registry..."
+        ALL_VERSIONS=$(gh api \
+          "$API_PREFIX/packages/container/$PACKAGE_NAME/versions" \
+          --paginate \
+          --jq '.[] | {id: .id, tags: .metadata.container.tags, created: .created_at, updated: .updated_at}' 2>/dev/null || echo "")
+
+        if [ -z "$ALL_VERSIONS" ]; then
+          echo "⚠️  No versions found for package: $PACKAGE_NAME"
+          echo "This could mean:"
+          echo "  - The package doesn't exist"
+          echo "  - The token doesn't have read:packages permission"
+          echo "  - The package name is incorrect"
+          exit 0
+        fi
+
+        echo "Available versions in registry:"
+        echo "$ALL_VERSIONS" | head -20
+        echo ""
+
+        # Process each version to delete
         for version in $VERSIONS; do
+          echo "----------------------------------------"
           echo "Processing Docker image version: $version"
+          echo "Expected tag to match: $version"
 
-          # Get all versions and filter by tag
-          PACKAGE_ID=$(gh api \
-            "/user/packages/container/$PACKAGE_NAME/versions" \
-            --jq ".[] | select(.metadata.container.tags[]? == \"$version\") | .id" 2>&1)
+          # Get the package version ID by matching the tag
+          echo "Searching for version with tag '$version'..."
 
-          if [ -n "$PACKAGE_ID" ] && [[ "$PACKAGE_ID" =~ ^[0-9]+$ ]]; then
-            echo "Deleting Docker image version: $version (ID: $PACKAGE_ID)"
-            gh api --method DELETE \
-              "/user/packages/container/$PACKAGE_NAME/versions/$PACKAGE_ID" \
-              && echo "✓ Deleted $version" \
-              || echo "Failed to delete $version"
+          # Try to get package ID with better error handling
+          PACKAGE_INFO=$(gh api \
+            "$API_PREFIX/packages/container/$PACKAGE_NAME/versions" \
+            --paginate \
+            --jq ".[] | select(.metadata.container.tags[]? == \"$version\")" 2>/dev/null || echo "")
+
+          if [ -n "$PACKAGE_INFO" ]; then
+            PACKAGE_ID=$(echo "$PACKAGE_INFO" | jq -r '.id' | head -1)
+            PACKAGE_TAGS=$(echo "$PACKAGE_INFO" | jq -r '.metadata.container.tags[]' | tr '\n' ', ' | sed 's/,$//')
+
+            echo "✓ Found package version:"
+            echo "  - ID: $PACKAGE_ID"
+            echo "  - Tags: $PACKAGE_TAGS"
+            echo "  - Expected tag: $version"
+
+            if [ -n "$PACKAGE_ID" ] && [[ "$PACKAGE_ID" =~ ^[0-9]+$ ]]; then
+              echo "Attempting to delete version ID: $PACKAGE_ID..."
+
+              # Try to delete the package version
+              if gh api --method DELETE \
+                "$API_PREFIX/packages/container/$PACKAGE_NAME/versions/$PACKAGE_ID" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" 2>/dev/null; then
+                echo "✅ Successfully deleted Docker image version: $version (ID: $PACKAGE_ID)"
+              else
+                echo "❌ Failed to delete Docker image version: $version (ID: $PACKAGE_ID)"
+                echo "   This could mean:"
+                echo "   - Token doesn't have delete:packages permission"
+                echo "   - Package is protected"
+                echo "   - Version doesn't exist anymore"
+              fi
+            else
+              echo "⚠️  Invalid package ID format: $PACKAGE_ID"
+            fi
           else
-            echo "Version $version not found in registry"
+            echo "⚠️  Version '$version' not found in registry"
+            echo "   Available tags in registry:"
+            gh api \
+              "$API_PREFIX/packages/container/$PACKAGE_NAME/versions" \
+              --paginate \
+              --jq '.[].metadata.container.tags[]' 2>/dev/null | sort -u | head -10 || echo "Could not list tags"
           fi
         done
+
+        echo "========================================="
+        echo "Docker image cleanup completed"
+        echo "========================================="
 
     - name: Delete Helm Charts from GHCR
       if: steps.versions.outputs.versions != ''
@@ -215,20 +304,32 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
       run: |
+        # Enhanced deletion with comprehensive debugging
+
         VERSIONS="${{ steps.versions.outputs.versions }}"
         OWNER="${{ inputs.repo-owner }}"
         CUSTOM_CHART_NAME="${{ inputs.helm-chart-name }}"
+        REGISTRY="${{ inputs.registry }}"
 
         # Convert to lowercase
         OWNER=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
 
         # Use custom name if provided, otherwise use charts/{repo-name}
         if [ -n "$CUSTOM_CHART_NAME" ]; then
-          CHART_NAME="$CUSTOM_CHART_NAME"
+          # Check if custom chart name already has URL encoding
+          if echo "$CUSTOM_CHART_NAME" | grep -q '%2F'; then
+            CHART_NAME="$CUSTOM_CHART_NAME"
+            CHART_NAME_DISPLAY=$(echo "$CUSTOM_CHART_NAME" | sed 's/%2F/\//g')
+          else
+            CHART_NAME_DISPLAY="$CUSTOM_CHART_NAME"
+            # URL encode forward slashes if present
+            CHART_NAME=$(echo "$CUSTOM_CHART_NAME" | sed 's/\//%2F/g')
+          fi
         else
           REPO_NAME="${{ inputs.repo-name }}"
           REPO_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]')
-          # Helm charts have the "charts/" prefix
+          # Helm charts typically have the "charts/" prefix
+          CHART_NAME_DISPLAY="charts/$REPO_NAME"
           CHART_NAME="charts%2F$REPO_NAME"
         fi
 
@@ -237,26 +338,140 @@ runs:
           exit 0
         fi
 
-        echo "Cleaning Helm charts for versions: $VERSIONS"
+        echo "========================================="
+        echo "Helm Chart Deletion Configuration:"
+        echo "========================================="
+        echo "Registry: $REGISTRY"
+        echo "Owner: $OWNER"
+        echo "Chart name (display): $CHART_NAME_DISPLAY"
+        echo "Chart name (URL encoded): $CHART_NAME"
+        echo "Versions to delete: $VERSIONS"
+        echo "========================================="
 
+        # First, let's check if we're using organization or user packages
+        # Try organization first
+        echo "Checking if this is an organization package..."
+        ORG_PACKAGES=$(gh api \
+          "/orgs/$OWNER/packages?package_type=container" \
+          --jq '.[].name' 2>/dev/null || echo "")
+
+        # Check both encoded and decoded versions
+        if echo "$ORG_PACKAGES" | grep -q "^$CHART_NAME$\|^$CHART_NAME_DISPLAY$"; then
+          PACKAGE_TYPE="org"
+          API_PREFIX="/orgs/$OWNER"
+          echo "✓ Found as organization package"
+        else
+          PACKAGE_TYPE="user"
+          API_PREFIX="/user"
+          echo "✓ Assuming user package (or using GITHUB_TOKEN)"
+        fi
+
+        echo "Package type: $PACKAGE_TYPE"
+        echo "API prefix: $API_PREFIX"
+
+        # List all available versions first for debugging
+        echo ""
+        echo "Fetching all available Helm chart versions from registry..."
+
+        # Try with URL-encoded name first
+        ALL_VERSIONS=$(gh api \
+          "$API_PREFIX/packages/container/$CHART_NAME/versions" \
+          --paginate \
+          --jq '.[] | {id: .id, tags: .metadata.container.tags, created: .created_at, updated: .updated_at}' 2>/dev/null || echo "")
+
+        # If that fails, try without encoding
+        if [ -z "$ALL_VERSIONS" ] && [ "$CHART_NAME" != "$CHART_NAME_DISPLAY" ]; then
+          echo "Trying with unencoded chart name: $CHART_NAME_DISPLAY"
+          CHART_NAME_UNENCODED=$(echo "$CHART_NAME_DISPLAY" | sed 's/\//%2F/g')
+          ALL_VERSIONS=$(gh api \
+            "$API_PREFIX/packages/container/$CHART_NAME_UNENCODED/versions" \
+            --paginate \
+            --jq '.[] | {id: .id, tags: .metadata.container.tags, created: .created_at, updated: .updated_at}' 2>/dev/null || echo "")
+
+          if [ -n "$ALL_VERSIONS" ]; then
+            CHART_NAME="$CHART_NAME_UNENCODED"
+            echo "✓ Using URL-encoded chart name: $CHART_NAME"
+          fi
+        fi
+
+        if [ -z "$ALL_VERSIONS" ]; then
+          echo "⚠️  No Helm chart versions found for package: $CHART_NAME_DISPLAY"
+          echo "This could mean:"
+          echo "  - The Helm chart package doesn't exist"
+          echo "  - The token doesn't have read:packages permission"
+          echo "  - The chart name is incorrect"
+          echo "  - Helm charts might not be published to GHCR for this repository"
+
+          # Try to list all container packages to help debug
+          echo ""
+          echo "Listing all available container packages for debugging:"
+          gh api \
+            "$API_PREFIX/packages?package_type=container" \
+            --jq '.[].name' 2>/dev/null | head -20 || echo "Could not list packages"
+
+          exit 0
+        fi
+
+        echo "Available Helm chart versions in registry:"
+        echo "$ALL_VERSIONS" | head -20
+        echo ""
+
+        # Process each version to delete
         for version in $VERSIONS; do
+          echo "----------------------------------------"
           echo "Processing Helm chart version: $version"
+          echo "Expected tag to match: $version"
 
-          # Get all versions and filter by tag
-          PACKAGE_ID=$(gh api \
-            "/user/packages/container/$CHART_NAME/versions" \
-            --jq ".[] | select(.metadata.container.tags[]? == \"$version\") | .id" 2>&1)
+          # Get the package version ID by matching the tag
+          echo "Searching for Helm chart with tag '$version'..."
 
-          if [ -n "$PACKAGE_ID" ] && [[ "$PACKAGE_ID" =~ ^[0-9]+$ ]]; then
-            echo "Deleting Helm chart version: $version (ID: $PACKAGE_ID)"
-            gh api --method DELETE \
-              "/user/packages/container/$CHART_NAME/versions/$PACKAGE_ID" \
-              && echo "✓ Deleted $version" \
-              || echo "Failed to delete chart $version"
+          # Try to get package ID with better error handling
+          PACKAGE_INFO=$(gh api \
+            "$API_PREFIX/packages/container/$CHART_NAME/versions" \
+            --paginate \
+            --jq ".[] | select(.metadata.container.tags[]? == \"$version\")" 2>/dev/null || echo "")
+
+          if [ -n "$PACKAGE_INFO" ]; then
+            PACKAGE_ID=$(echo "$PACKAGE_INFO" | jq -r '.id' | head -1)
+            PACKAGE_TAGS=$(echo "$PACKAGE_INFO" | jq -r '.metadata.container.tags[]' | tr '\n' ', ' | sed 's/,$//')
+
+            echo "✓ Found Helm chart version:"
+            echo "  - ID: $PACKAGE_ID"
+            echo "  - Tags: $PACKAGE_TAGS"
+            echo "  - Expected tag: $version"
+
+            if [ -n "$PACKAGE_ID" ] && [[ "$PACKAGE_ID" =~ ^[0-9]+$ ]]; then
+              echo "Attempting to delete Helm chart version ID: $PACKAGE_ID..."
+
+              # Try to delete the package version
+              if gh api --method DELETE \
+                "$API_PREFIX/packages/container/$CHART_NAME/versions/$PACKAGE_ID" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" 2>/dev/null; then
+                echo "✅ Successfully deleted Helm chart version: $version (ID: $PACKAGE_ID)"
+              else
+                echo "❌ Failed to delete Helm chart version: $version (ID: $PACKAGE_ID)"
+                echo "   This could mean:"
+                echo "   - Token doesn't have delete:packages permission"
+                echo "   - Package is protected"
+                echo "   - Version doesn't exist anymore"
+              fi
+            else
+              echo "⚠️  Invalid package ID format: $PACKAGE_ID"
+            fi
           else
-            echo "Chart version $version not found in registry"
+            echo "⚠️  Helm chart version '$version' not found in registry"
+            echo "   Available tags in registry:"
+            gh api \
+              "$API_PREFIX/packages/container/$CHART_NAME/versions" \
+              --paginate \
+              --jq '.[].metadata.container.tags[]' 2>/dev/null | sort -u | head -10 || echo "Could not list tags"
           fi
         done
+
+        echo "========================================="
+        echo "Helm chart cleanup completed"
+        echo "========================================="
 
     - name: Delete GitHub Deployment
       shell: bash
