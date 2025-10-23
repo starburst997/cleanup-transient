@@ -6,6 +6,10 @@ inputs:
   pattern:
     description: 'Pattern suffix to clean (e.g., "rc", "pr-123")'
     required: true
+  versions:
+    description: 'Space-separated list of versions to clean (e.g., "1.0.0-rc.1 1.0.0-rc.2"). If not specified, versions are detected from git tags matching the pattern.'
+    required: false
+    default: ""
   token:
     description: "GitHub token with permissions to delete packages and environments"
     required: true
@@ -66,8 +70,16 @@ runs:
       id: versions
       shell: bash
       run: |
-        git fetch --tags
-        VERSIONS=$(git tag -l "v*-${{ inputs.pattern }}.*" | sed 's/^v//' | tr '\n' ' ')
+        # Use manually provided versions if specified, otherwise detect from git tags
+        if [ -n "${{ inputs.versions }}" ]; then
+          VERSIONS="${{ inputs.versions }}"
+          echo "Using manually provided versions: $VERSIONS"
+        else
+          git fetch --tags
+          VERSIONS=$(git tag -l "v*-${{ inputs.pattern }}.*" | sed 's/^v//' | tr '\n' ' ')
+          echo "Detected versions from git tags: $VERSIONS"
+        fi
+
         echo "versions=$VERSIONS" >> $GITHUB_OUTPUT
         echo "Versions to clean: $VERSIONS"
 
