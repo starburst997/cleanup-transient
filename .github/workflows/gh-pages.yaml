@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'docs/**'
-      - '.github/workflows/gh-pages.yaml'
+      - "docs/**"
+      - ".github/workflows/gh-pages.yaml"
   workflow_dispatch:
 
 permissions:
@@ -40,6 +40,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Initialize custom bot
+        id: bot
+        uses: starburst997/custom-bot-init@v1
+        with:
+          app-id: ${{ secrets.BOT_ID }}
+          private-key: ${{ secrets.BOT_KEY }}
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          token: ${{ steps.bot.outputs.token }}
