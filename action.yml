@@ -238,7 +238,8 @@ runs:
         fi
 
         echo "Available versions in registry:"
-        echo "$ALL_VERSIONS" | head -20
+        # Use head with proper pipe handling to avoid broken pipe errors
+        echo "$ALL_VERSIONS" | head -20 || true
         echo ""
 
         # Process each version to delete
@@ -287,10 +288,11 @@ runs:
           else
             echo "⚠️  Version '$version' not found in registry"
             echo "   Available tags in registry:"
-            gh api \
+            # List available tags, handling potential broken pipe errors
+            { gh api \
               "$API_PREFIX/packages/container/$PACKAGE_NAME/versions" \
               --paginate \
-              --jq '.[].metadata.container.tags[]' 2>/dev/null | sort -u | head -10 || echo "Could not list tags"
+              --jq '.[].metadata.container.tags[]' 2>/dev/null | sort -u | head -10; } 2>/dev/null || echo "Could not list tags"
           fi
         done
 
@@ -405,9 +407,10 @@ runs:
           # Try to list all container packages to help debug
           echo ""
           echo "Listing all available container packages for debugging:"
-          gh api \
+          # List packages, handling potential broken pipe errors
+          { gh api \
             "$API_PREFIX/packages?package_type=container" \
-            --jq '.[].name' 2>/dev/null | head -20 || echo "Could not list packages"
+            --jq '.[].name' 2>/dev/null | head -20; } 2>/dev/null || echo "Could not list packages"
 
           exit 0
         fi
@@ -462,10 +465,11 @@ runs:
           else
             echo "⚠️  Helm chart version '$version' not found in registry"
             echo "   Available tags in registry:"
-            gh api \
+            # List available tags, handling potential broken pipe errors
+            { gh api \
               "$API_PREFIX/packages/container/$CHART_NAME/versions" \
               --paginate \
-              --jq '.[].metadata.container.tags[]' 2>/dev/null | sort -u | head -10 || echo "Could not list tags"
+              --jq '.[].metadata.container.tags[]' 2>/dev/null | sort -u | head -10; } 2>/dev/null || echo "Could not list tags"
           fi
         done
 
