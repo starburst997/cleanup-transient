@@ -1,0 +1,223 @@
+name: "Cleanup Transient Deployments"
+description: "Cleans up transient deployment artifacts including tags, Docker images, Helm charts, and GitHub environments"
+author: "JD Boivin"
+
+inputs:
+  pattern:
+    description: 'Pattern suffix to clean (e.g., "rc", "pr-123")'
+    required: true
+  token:
+    description: "GitHub token with permissions to delete packages and environments"
+    required: true
+    default: ${{ github.token }}
+  repo-owner:
+    description: "Repository owner (defaults to current repo owner)"
+    required: false
+    default: ${{ github.repository_owner }}
+  repo-name:
+    description: "Repository name (defaults to current repo name)"
+    required: false
+    default: ${{ github.event.repository.name }}
+  docker-image-name:
+    description: "Custom Docker image name (defaults to repo name in lowercase)"
+    required: false
+    default: ""
+  helm-chart-name:
+    description: "Custom Helm chart name (defaults to charts/{repo-name} in lowercase)"
+    required: false
+    default: ""
+  environment-name:
+    description: "Custom environment name (defaults to 'staging' for rc, pattern for pr-XXX)"
+    required: false
+    default: ""
+
+outputs:
+  versions:
+    description: "Space-separated list of versions that were cleaned up"
+    value: ${{ steps.versions.outputs.versions }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get versions to clean
+      id: versions
+      shell: bash
+      run: |
+        git fetch --tags
+        VERSIONS=$(git tag -l "v*-${{ inputs.pattern }}.*" | sed 's/^v//' | tr '\n' ' ')
+        echo "versions=$VERSIONS" >> $GITHUB_OUTPUT
+        echo "Versions to clean: $VERSIONS"
+
+    - name: Delete Git Tags
+      shell: bash
+      run: |
+        git fetch --tags
+
+        # Find all tags matching the pattern
+        TAGS=$(git tag -l "v*-${{ inputs.pattern }}.*")
+
+        if [ -z "$TAGS" ]; then
+          echo "No tags found matching pattern: v*-${{ inputs.pattern }}.*"
+          exit 0
+        fi
+
+        echo "Found tags to delete:"
+        echo "$TAGS"
+
+        # Delete tags locally and remotely
+        for tag in $TAGS; do
+          echo "Deleting tag: $tag"
+          git tag -d "$tag" || true
+          git push origin ":refs/tags/$tag" || true
+        done
+
+    - name: Delete Docker Images from GHCR
+      if: steps.versions.outputs.versions != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        VERSIONS="${{ steps.versions.outputs.versions }}"
+        OWNER="${{ inputs.repo-owner }}"
+        CUSTOM_IMAGE_NAME="${{ inputs.docker-image-name }}"
+
+        # Convert to lowercase
+        OWNER=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+
+        # Use custom name if provided, otherwise use repo name
+        if [ -n "$CUSTOM_IMAGE_NAME" ]; then
+          PACKAGE_NAME="$CUSTOM_IMAGE_NAME"
+        else
+          PACKAGE_NAME="${{ inputs.repo-name }}"
+          PACKAGE_NAME=$(echo "$PACKAGE_NAME" | tr '[:upper:]' '[:lower:]')
+        fi
+
+        if [ -z "$VERSIONS" ]; then
+          echo "No versions to clean"
+          exit 0
+        fi
+
+        echo "Cleaning Docker images for versions: $VERSIONS"
+
+        for version in $VERSIONS; do
+          echo "Processing Docker image version: $version"
+
+          # Try to find and delete the package version by tag
+          # List all versions and find the one with matching tag
+          PACKAGE_VERSIONS=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/users/$OWNER/packages/container/$PACKAGE_NAME/versions" \
+            --jq ".[] | select(.metadata.container.tags[]? == \"$version\") | .id" 2>/dev/null || echo "")
+
+          if [ -n "$PACKAGE_VERSIONS" ]; then
+            for package_id in $PACKAGE_VERSIONS; do
+              echo "Deleting Docker image version: $version (ID: $package_id)"
+              gh api \
+                --method DELETE \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/users/$OWNER/packages/container/$PACKAGE_NAME/versions/$package_id" \
+                && echo "✓ Deleted $version" \
+                || echo "Failed to delete $version"
+            done
+          else
+            echo "Version $version not found in registry"
+          fi
+        done
+
+    - name: Delete Helm Charts from GHCR
+      if: steps.versions.outputs.versions != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        VERSIONS="${{ steps.versions.outputs.versions }}"
+        OWNER="${{ inputs.repo-owner }}"
+        CUSTOM_CHART_NAME="${{ inputs.helm-chart-name }}"
+
+        # Convert to lowercase
+        OWNER=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+
+        # Use custom name if provided, otherwise use charts/{repo-name}
+        if [ -n "$CUSTOM_CHART_NAME" ]; then
+          CHART_NAME="$CUSTOM_CHART_NAME"
+        else
+          REPO_NAME="${{ inputs.repo-name }}"
+          REPO_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]')
+          # Helm charts have the "charts/" prefix
+          CHART_NAME="charts%2F$REPO_NAME"
+        fi
+
+        if [ -z "$VERSIONS" ]; then
+          echo "No versions to clean"
+          exit 0
+        fi
+
+        echo "Cleaning Helm charts for versions: $VERSIONS"
+
+        for version in $VERSIONS; do
+          echo "Processing Helm chart version: $version"
+
+          # Try to find and delete the package version by tag
+          PACKAGE_VERSIONS=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/users/$OWNER/packages/container/$CHART_NAME/versions" \
+            --jq ".[] | select(.metadata.container.tags[]? == \"$version\") | .id" 2>/dev/null || echo "")
+
+          if [ -n "$PACKAGE_VERSIONS" ]; then
+            for package_id in $PACKAGE_VERSIONS; do
+              echo "Deleting Helm chart version: $version (ID: $package_id)"
+              gh api \
+                --method DELETE \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/users/$OWNER/packages/container/$CHART_NAME/versions/$package_id" \
+                && echo "✓ Deleted $version" \
+                || echo "Failed to delete chart $version"
+            done
+          else
+            echo "Chart version $version not found in registry"
+          fi
+        done
+
+    - name: Delete GitHub Environment
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        PATTERN="${{ inputs.pattern }}"
+        OWNER="${{ inputs.repo-owner }}"
+        REPO="${{ inputs.repo-name }}"
+        CUSTOM_ENV_NAME="${{ inputs.environment-name }}"
+
+        # Use custom environment name if provided
+        if [ -n "$CUSTOM_ENV_NAME" ]; then
+          ENV_NAME="$CUSTOM_ENV_NAME"
+        else
+          # Determine environment name based on pattern
+          if [ "$PATTERN" = "rc" ]; then
+            ENV_NAME="staging"
+          elif [[ "$PATTERN" =~ ^pr[0-9]+$ ]]; then
+            ENV_NAME="$PATTERN"
+          else
+            echo "Unknown pattern type: $PATTERN"
+            exit 0
+          fi
+        fi
+
+        echo "Attempting to delete environment: $ENV_NAME"
+
+        # Delete the environment
+        gh api \
+          --method DELETE \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          "/repos/$OWNER/$REPO/environments/$ENV_NAME" \
+          && echo "Environment '$ENV_NAME' deleted successfully" \
+          || echo "Error deleting environment '$ENV_NAME' (it may not exist)"
+
+branding:
+  icon: "trash-2"
+  color: "red"
