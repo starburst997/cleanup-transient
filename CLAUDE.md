@@ -38,6 +38,8 @@ This is a GitHub composite action that automates the cleanup of transient deploy
 |-------|-------------|------|----------|
 | `pattern` | Pattern suffix to clean (e.g., "rc", "pr-123") | string | Yes |
 | `token` | GitHub token with permissions | string | No (default: `${{ github.token }}`) |
+| `registry` | Container registry URL | string | No (default: `ghcr.io`) |
+| `username` | Username or organization | string | No (default: `${{ github.repository_owner }}`) |
 | `repo-owner` | Repository owner | string | No (default: `${{ github.repository_owner }}`) |
 | `repo-name` | Repository name | string | No (default: `${{ github.event.repository.name }}`) |
 | `docker-image-name` | Custom Docker image name | string | No |

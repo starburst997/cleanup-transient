@@ -1,13 +1,13 @@
 # Cleanup Transient Deployments
 
-A GitHub composite action that automates the cleanup of transient deployment artifacts including Git tags, Docker images, Helm charts, and GitHub environments.
+A GitHub composite action that automates the cleanup of transient deployment artifacts including Git tags, Docker images, Helm charts, and GitHub deployments.
 
 ## Features
 
 - Deletes Git tags matching version patterns
 - Removes Docker images from GitHub Container Registry (GHCR)
 - Removes Helm charts from GHCR (with `charts/` prefix)
-- Deletes GitHub deployment environments
+- Deletes GitHub deployments
 - Optional Kubernetes/Helm cleanup (uninstall Helm releases from K8s clusters)
 - Pure bash implementation using `gh` CLI (no JavaScript dependencies)
 - Supports multiple pattern types (rc, pr-based, custom)
@@ -67,6 +67,8 @@ jobs:
 | -------------------- | ----------------------------------------------------------------------- | -------- | ------------------------------------- |
 | `pattern`            | Pattern suffix to clean (e.g., "rc", "pr-123")                          | Yes      | -                                     |
 | `token`              | GitHub token with permissions to delete packages and environments       | No       | `${{ github.token }}`                 |
+| `registry`           | Container registry URL                                                  | No       | `ghcr.io`                             |
+| `username`           | Username or organization (defaults to repository owner)                 | No       | `${{ github.repository_owner }}`      |
 | `repo-owner`         | Repository owner (defaults to current repo owner)                       | No       | `${{ github.repository_owner }}`      |
 | `repo-name`          | Repository name (defaults to current repo name)                         | No       | `${{ github.event.repository.name }}` |
 | `docker-image-name`  | Custom Docker image name (defaults to repo name in lowercase)           | No       | -                                     |
@@ -121,12 +123,15 @@ If `kube-config` is provided, the action will:
 
 **This step is completely optional and will be skipped if `kube-config` is not provided.**
 
-### 5. GitHub Environment Cleanup
+### 5. GitHub Deployment Cleanup
 
-Deletes the GitHub deployment environment:
+Deletes the GitHub deployment with the specified name:
 
-- For `rc` pattern: deletes environment named `staging`
-- For `pr-XXX` pattern: deletes environment named `pr-XXX`
+- Finds the deployment by name (via environment field)
+- Sets the deployment to `inactive` status (required before deletion)
+- Deletes the deployment
+- For `rc` pattern: deletes deployment named `staging`
+- For `pr-XXX` pattern: deletes deployment named `pr-XXX`
 
 ## Requirements
 

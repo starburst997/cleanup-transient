@@ -358,7 +358,7 @@
         <h1>Cleanup Transient</h1>
         <p class="tagline">
           Automate cleanup of transient deployments. Remove Git tags, Docker
-          images, Helm charts, Kubernetes resources, and GitHub environments
+          images, Helm charts, Kubernetes resources, and GitHub deployments
           with ease.
         </p>
         <div class="cta-buttons">
@@ -415,9 +415,9 @@
 
           <div class="feature">
             <div class="feature-icon">🌍</div>
-            <h3>Environments</h3>
+            <h3>Deployments</h3>
             <p>
-              Delete GitHub deployment environments (staging, PR environments).
+              Delete GitHub deployments (staging, PR deployments).
             </p>
           </div>
         </div>
@@ -494,6 +494,22 @@
             </div>
 
             <div class="param-item">
+              <div class="param-name">registry</div>
+              <div class="param-desc">Container registry URL</div>
+              <div class="param-default">Default: ghcr.io</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">username</div>
+              <div class="param-desc">
+                Username or organization (defaults to repository owner)
+              </div>
+              <div class="param-default">
+                Default: ${{ github.repository_owner }}
+              </div>
+            </div>
+
+            <div class="param-item">
               <div class="param-name">repo-owner</div>
               <div class="param-desc">Repository owner</div>
               <div class="param-default">
@@ -561,11 +577,11 @@
           </div>
 
           <div class="reference-card">
-            <h3>🌍 Environment Configuration</h3>
+            <h3>🌍 Deployment Configuration</h3>
 
             <div class="param-item">
               <div class="param-name">environment-name</div>
-              <div class="param-desc">Custom GitHub environment name</div>
+              <div class="param-desc">Custom GitHub deployment name</div>
               <div class="param-default">
                 Default: 'staging' for rc, pattern for pr-XXX
               </div>
