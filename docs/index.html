@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -16,8 +16,7 @@
       }
 
       body {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           "Helvetica Neue", Arial, sans-serif;
         line-height: 1.6;
         color: #d0d0d9;
@@ -229,6 +228,74 @@
         color: #e18cf5;
       }
 
+      .reference-section {
+        background: #0c1018;
+        padding: 4rem 0;
+      }
+
+      .reference-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+
+      .reference-card {
+        background: #141518;
+        border: 1px solid #3f3f3f;
+        border-radius: 10px;
+        padding: 2rem;
+      }
+
+      .reference-card h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        color: #61afff;
+        border-bottom: 3px solid #61afff;
+        padding-bottom: 0.5rem;
+      }
+
+      .param-item {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #3f3f3f;
+      }
+
+      .param-item:last-child {
+        border-bottom: none;
+      }
+
+      .param-name {
+        font-family: "Monaco", monospace;
+        font-size: 0.95rem;
+        color: #98d280;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      .param-desc {
+        font-size: 0.9rem;
+        color: #d0d0d9;
+        margin-bottom: 0.25rem;
+      }
+
+      .param-default {
+        font-size: 0.85rem;
+        color: #96969d;
+        font-style: italic;
+      }
+
+      .param-required {
+        display: inline-block;
+        background: #ff7373;
+        color: #0c1018;
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+        font-weight: 600;
+      }
+
       footer {
         background: #0c1018;
         padding: 3rem 0;
@@ -290,7 +357,9 @@
       <div class="container">
         <h1>Cleanup Transient</h1>
         <p class="tagline">
-          Automate cleanup of transient deployments. Remove Git tags, Docker images, Helm charts, Kubernetes resources, and GitHub environments with ease.
+          Automate cleanup of transient deployments. Remove Git tags, Docker
+          images, Helm charts, Kubernetes resources, and GitHub environments
+          with ease.
         </p>
         <div class="cta-buttons">
           <a
@@ -321,7 +390,8 @@
             <div class="feature-icon">🏷️</div>
             <h3>Git Tags</h3>
             <p>
-              Automatically find and delete Git tags matching your environment patterns.
+              Automatically find and delete Git tags matching your environment
+              patterns.
             </p>
           </div>
 
@@ -329,7 +399,8 @@
             <div class="feature-icon">🐳</div>
             <h3>Docker Images</h3>
             <p>
-              Remove Docker images from GitHub Container Registry by version tag.
+              Remove Docker images from GitHub Container Registry by version
+              tag.
             </p>
           </div>
 
@@ -337,7 +408,8 @@
             <div class="feature-icon">⎈</div>
             <h3>Helm Charts</h3>
             <p>
-              Clean up Helm chart versions from GHCR with charts/ prefix support.
+              Clean up Helm chart versions from GHCR with charts/ prefix
+              support.
             </p>
           </div>
 
@@ -358,15 +430,6 @@
         <p class="section-subtitle">
           Add this to your workflow to clean up PR deployments
         </p>
-
-        <div style="text-align: center; margin: 2rem 0; color: #96969d;">
-          <p style="margin-bottom: 0.5rem;">
-            <strong style="color: #61afff;">Outputs:</strong> Returns cleaned versions as a space-separated list and markdown-formatted bullet list
-          </p>
-          <p style="font-size: 0.9rem;">
-            Perfect for PR comments and workflow summaries
-          </p>
-        </div>
 
         <div class="code-block">
           <pre><code><span class="yaml-key">name:</span> <span class="yaml-string">Cleanup PR Environment</span>
@@ -396,15 +459,162 @@
       </div>
     </section>
 
+    <section class="reference-section">
+      <div class="container">
+        <h2 class="section-title">Reference</h2>
+        <p class="section-subtitle">
+          Complete action inputs and outputs documentation
+        </p>
+
+        <div class="reference-grid">
+          <div class="reference-card">
+            <h3>📥 Required Inputs</h3>
+
+            <div class="param-item">
+              <div class="param-name">
+                pattern<span class="param-required">REQUIRED</span>
+              </div>
+              <div class="param-desc">
+                Pattern suffix to clean (e.g., "rc", "pr-123")
+              </div>
+              <div class="param-default">Example: rc, pr-123, pr-456</div>
+            </div>
+          </div>
+
+          <div class="reference-card">
+            <h3>⚙️ General Configuration</h3>
+
+            <div class="param-item">
+              <div class="param-name">token</div>
+              <div class="param-desc">
+                GitHub token with permissions to delete packages and
+                environments
+              </div>
+              <div class="param-default">Default: ${{ github.token }}</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">repo-owner</div>
+              <div class="param-desc">Repository owner</div>
+              <div class="param-default">
+                Default: ${{ github.repository_owner }}
+              </div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">repo-name</div>
+              <div class="param-desc">Repository name</div>
+              <div class="param-default">
+                Default: ${{ github.event.repository.name }}
+              </div>
+            </div>
+          </div>
+
+          <div class="reference-card">
+            <h3>🐳 Docker & Helm (GHCR)</h3>
+
+            <div class="param-item">
+              <div class="param-name">docker-image-name</div>
+              <div class="param-desc">Custom Docker image name</div>
+              <div class="param-default">Default: repo name in lowercase</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">helm-chart-name</div>
+              <div class="param-desc">Custom Helm chart name</div>
+              <div class="param-default">
+                Default: charts/{repo-name} in lowercase
+              </div>
+            </div>
+          </div>
+
+          <div class="reference-card">
+            <h3>⎈ Kubernetes Cleanup (Optional)</h3>
+
+            <div class="param-item">
+              <div class="param-name">kube-config</div>
+              <div class="param-desc">
+                Kubernetes config file content for kubectl access. If not
+                provided, K8s cleanup is skipped.
+              </div>
+              <div class="param-default">
+                Default: none (K8s cleanup disabled)
+              </div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">namespace</div>
+              <div class="param-desc">
+                Kubernetes namespace for Helm release (used when kube-config is
+                provided)
+              </div>
+              <div class="param-default">Default: preview</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">helm</div>
+              <div class="param-desc">
+                Helm release name to uninstall from Kubernetes cluster
+              </div>
+              <div class="param-default">Default: none</div>
+            </div>
+          </div>
+
+          <div class="reference-card">
+            <h3>🌍 Environment Configuration</h3>
+
+            <div class="param-item">
+              <div class="param-name">environment-name</div>
+              <div class="param-desc">Custom GitHub environment name</div>
+              <div class="param-default">
+                Default: 'staging' for rc, pattern for pr-XXX
+              </div>
+            </div>
+          </div>
+
+          <div class="reference-card">
+            <h3>📤 Outputs</h3>
+
+            <div class="param-item">
+              <div class="param-name">versions</div>
+              <div class="param-desc">
+                Space-separated list of versions that were cleaned up
+              </div>
+              <div class="param-default">Example: 1.0.0-rc.1 1.0.0-rc.2</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">versions-markdown</div>
+              <div class="param-desc">
+                Markdown-formatted bullet list of versions for GitHub comments
+              </div>
+              <div class="param-default">
+                Example: - 1.0.0-rc.1\n- 1.0.0-rc.2
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <footer>
       <div class="container">
         <p>
-          <a href="https://github.com/starburst997/cleanup-transient">GitHub</a> •
-          <a href="https://github.com/starburst997/cleanup-transient/issues">Issues</a> •
-          <a href="https://github.com/starburst997/cleanup-transient/releases">Releases</a> •
-          <a href="https://github.com/starburst997/cleanup-transient#readme">Documentation</a>
+          <a href="https://github.com/starburst997/cleanup-transient">GitHub</a>
+          •
+          <a href="https://github.com/starburst997/cleanup-transient/issues"
+            >Issues</a
+          >
+          •
+          <a href="https://github.com/starburst997/cleanup-transient/releases"
+            >Releases</a
+          >
+          •
+          <a href="https://github.com/starburst997/cleanup-transient#readme"
+            >Documentation</a
+          >
         </p>
-        <p style="margin-top: 1rem; color: #636669;">
+        <p style="margin-top: 1rem; color: #636669">
           Made with 🗑️ by JD Boivin
         </p>
       </div>
