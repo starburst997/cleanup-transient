@@ -35,6 +35,9 @@ outputs:
   versions:
     description: "Space-separated list of versions that were cleaned up"
     value: ${{ steps.versions.outputs.versions }}
+  versions-markdown:
+    description: "Markdown-formatted bullet list of versions for GitHub comments"
+    value: ${{ steps.versions.outputs.versions_markdown }}
 
 runs:
   using: "composite"
@@ -47,6 +50,19 @@ runs:
         VERSIONS=$(git tag -l "v*-${{ inputs.pattern }}.*" | sed 's/^v//' | tr '\n' ' ')
         echo "versions=$VERSIONS" >> $GITHUB_OUTPUT
         echo "Versions to clean: $VERSIONS"
+
+        # Generate markdown-formatted list
+        if [ -z "$VERSIONS" ]; then
+          echo "versions_markdown=_No versions found to clean_" >> $GITHUB_OUTPUT
+        else
+          MARKDOWN=$(echo "$VERSIONS" | tr ' ' '\n' | grep -v '^$' | sed 's/^/- /' | tr '\n' '\n')
+          # Use multiline output format
+          {
+            echo "versions_markdown<<EOF"
+            echo "$MARKDOWN"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+        fi
 
     - name: Delete Git Tags
       shell: bash

@@ -74,9 +74,10 @@ jobs:
 
 ## Outputs
 
-| Output     | Description                                           |
-| ---------- | ----------------------------------------------------- |
-| `versions` | Space-separated list of versions that were cleaned up |
+| Output              | Description                                                   |
+| ------------------- | ------------------------------------------------------------- |
+| `versions`          | Space-separated list of versions that were cleaned up         |
+| `versions-markdown` | Markdown-formatted bullet list of versions for GitHub comments |
 
 ## How It Works
 
@@ -179,6 +180,18 @@ jobs:
 
       - name: Display cleaned versions
         run: echo "Cleaned versions: ${{ steps.cleanup.outputs.versions }}"
+
+      - name: Comment on PR
+        if: steps.cleanup.outputs.versions != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🗑️ Cleanup Complete\n\nThe following versions were cleaned up:\n\n${{ steps.cleanup.outputs.versions-markdown }}`
+            })
 ```
 
 ### Manual Cleanup with Workflow Dispatch
