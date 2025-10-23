@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cleanup Transient - GitHub Action</title>
+    <meta
+      name="description"
+      content="A GitHub composite action that automates cleanup of transient deployments including tags, Docker images, Helm charts, and environments."
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #d0d0d9;
+        background: #0c1018;
+        min-height: 100vh;
+      }
+
+      .hero-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100vh;
+        background: linear-gradient(135deg, #0c1018 0%, #191923 100%);
+        z-index: -1;
+      }
+
+      .hero-accent {
+        position: absolute;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, #ff737320 0%, transparent 70%);
+        top: -300px;
+        left: 50%;
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      header {
+        padding: 2rem 0;
+        text-align: center;
+      }
+
+      .hero {
+        padding: 4rem 0 6rem;
+        text-align: center;
+      }
+
+      h1 {
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        background: linear-gradient(to right, #ff7373, #61afff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .tagline {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+        color: #96969d;
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .cta-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 2rem;
+      }
+
+      .btn {
+        display: inline-block;
+        padding: 0.875rem 2rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        font-size: 1.1rem;
+      }
+
+      .btn-primary {
+        background: #ff7373;
+        color: #0c1018;
+        border: 1px solid #ff7373;
+      }
+
+      .btn-primary:hover {
+        background: #ff8585;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 30px rgba(255, 115, 115, 0.3);
+      }
+
+      .btn-secondary {
+        background: transparent;
+        color: #d0d0d9;
+        border: 2px solid #3f3f3f;
+      }
+
+      .btn-secondary:hover {
+        background: #32373c;
+        border-color: #636669;
+      }
+
+      .features-section {
+        background: #141518;
+        border-top: 1px solid #3f3f3f;
+        border-bottom: 1px solid #3f3f3f;
+        padding: 5rem 0;
+      }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 2rem;
+        margin-top: 3rem;
+      }
+
+      .feature {
+        text-align: center;
+        padding: 1.5rem;
+      }
+
+      .feature-icon {
+        width: 60px;
+        height: 60px;
+        background: #32373c;
+        border: 1px solid #3f3f3f;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 1.8rem;
+      }
+
+      .feature h3 {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+        color: #61afff;
+      }
+
+      .feature p {
+        color: #96969d;
+        line-height: 1.7;
+        font-size: 0.95rem;
+      }
+
+      .section-title {
+        text-align: center;
+        font-size: 2.5rem;
+        color: #d0d0d9;
+        margin-bottom: 1rem;
+      }
+
+      .section-subtitle {
+        text-align: center;
+        color: #96969d;
+        font-size: 1.2rem;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .usage-section {
+        padding: 4rem 0;
+        background: #0c1018;
+      }
+
+      .code-block {
+        background: #141518;
+        border: 1px solid #3f3f3f;
+        border-radius: 10px;
+        padding: 2rem;
+        margin: 2rem auto;
+        max-width: 800px;
+        overflow-x: auto;
+      }
+
+      .code-block pre {
+        font-family: "Monaco", "Courier New", monospace;
+        font-size: 0.9rem;
+        color: #d0d0d9;
+        line-height: 1.6;
+      }
+
+      .code-block code {
+        color: #98d280;
+      }
+
+      /* Syntax highlighting */
+      .yaml-key {
+        color: #61afff;
+      }
+
+      .yaml-string {
+        color: #98d280;
+      }
+
+      .yaml-value {
+        color: #ffe169;
+      }
+
+      .yaml-comment {
+        color: #636669;
+        font-style: italic;
+      }
+
+      .yaml-variable {
+        color: #e18cf5;
+      }
+
+      footer {
+        background: #0c1018;
+        padding: 3rem 0;
+        text-align: center;
+        color: #96969d;
+        border-top: 1px solid #3f3f3f;
+      }
+
+      footer a {
+        color: #61afff;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      footer a:hover {
+        color: #98d280;
+        text-decoration: underline;
+      }
+
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 2.5rem;
+        }
+
+        .tagline {
+          font-size: 1.2rem;
+        }
+
+        .features {
+          grid-template-columns: 1fr;
+          gap: 2rem;
+        }
+
+        .cta-buttons {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hero-background">
+      <div class="hero-accent"></div>
+    </div>
+
+    <header>
+      <div class="container">
+        <nav>
+          <a
+            href="https://github.com/starburst997/cleanup-transient"
+            class="btn btn-secondary"
+          >
+            View on GitHub →
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="container">
+        <h1>Cleanup Transient</h1>
+        <p class="tagline">
+          Automate cleanup of transient deployments. Remove Git tags, Docker images, Helm charts, and GitHub environments with ease.
+        </p>
+        <div class="cta-buttons">
+          <a
+            href="https://github.com/starburst997/cleanup-transient"
+            class="btn btn-primary"
+          >
+            🚀 Get Started
+          </a>
+          <a
+            href="https://github.com/starburst997/cleanup-transient#readme"
+            class="btn btn-secondary"
+          >
+            📖 Documentation
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="features-section">
+      <div class="container">
+        <h2 class="section-title">Complete Cleanup Solution</h2>
+        <p class="section-subtitle">
+          One action to clean up all your transient deployment artifacts
+        </p>
+
+        <div class="features">
+          <div class="feature">
+            <div class="feature-icon">🏷️</div>
+            <h3>Git Tags</h3>
+            <p>
+              Automatically find and delete Git tags matching your environment patterns.
+            </p>
+          </div>
+
+          <div class="feature">
+            <div class="feature-icon">🐳</div>
+            <h3>Docker Images</h3>
+            <p>
+              Remove Docker images from GitHub Container Registry by version tag.
+            </p>
+          </div>
+
+          <div class="feature">
+            <div class="feature-icon">⎈</div>
+            <h3>Helm Charts</h3>
+            <p>
+              Clean up Helm chart versions from GHCR with charts/ prefix support.
+            </p>
+          </div>
+
+          <div class="feature">
+            <div class="feature-icon">🌍</div>
+            <h3>Environments</h3>
+            <p>
+              Delete GitHub deployment environments (staging, PR environments).
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="usage-section">
+      <div class="container">
+        <h2 class="section-title">Quick Start</h2>
+        <p class="section-subtitle">
+          Add this to your workflow to clean up PR deployments
+        </p>
+
+        <div class="code-block">
+          <pre><code><span class="yaml-key">name:</span> <span class="yaml-string">Cleanup PR Environment</span>
+<span class="yaml-key">on:</span>
+  <span class="yaml-key">pull_request:</span>
+    <span class="yaml-key">types:</span> <span class="yaml-value">[closed]</span>
+
+<span class="yaml-key">jobs:</span>
+  <span class="yaml-key">cleanup:</span>
+    <span class="yaml-key">runs-on:</span> <span class="yaml-value">ubuntu-latest</span>
+    <span class="yaml-key">permissions:</span>
+      <span class="yaml-key">contents:</span> <span class="yaml-value">write</span>
+      <span class="yaml-key">packages:</span> <span class="yaml-value">write</span>
+      <span class="yaml-key">deployments:</span> <span class="yaml-value">write</span>
+    <span class="yaml-key">steps:</span>
+      - <span class="yaml-key">name:</span> <span class="yaml-string">Checkout</span>
+        <span class="yaml-key">uses:</span> <span class="yaml-value">actions/checkout@v4</span>
+        <span class="yaml-key">with:</span>
+          <span class="yaml-key">fetch-depth:</span> <span class="yaml-value">0</span>
+
+      - <span class="yaml-key">name:</span> <span class="yaml-string">Cleanup PR artifacts</span>
+        <span class="yaml-key">uses:</span> <span class="yaml-value">starburst997/cleanup-transient@v1</span>
+        <span class="yaml-key">with:</span>
+          <span class="yaml-key">pattern:</span> <span class="yaml-variable">pr-$&#123;&#123; github.event.pull_request.number &#125;&#125;</span>
+          <span class="yaml-key">token:</span> <span class="yaml-variable">$&#123;&#123; secrets.GITHUB_TOKEN &#125;&#125;</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="container">
+        <p>
+          <a href="https://github.com/starburst997/cleanup-transient">GitHub</a> •
+          <a href="https://github.com/starburst997/cleanup-transient/issues">Issues</a> •
+          <a href="https://github.com/starburst997/cleanup-transient/releases">Releases</a> •
+          <a href="https://github.com/starburst997/cleanup-transient#readme">Documentation</a>
+        </p>
+        <p style="margin-top: 1rem; color: #636669;">
+          Made with 🗑️ by JD Boivin
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
