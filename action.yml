@@ -543,6 +543,44 @@ runs:
           echo "No deployments found with environment name: $NAME"
         fi
 
+    - name: Delete GitHub Environment
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        PATTERN="${{ inputs.pattern }}"
+        OWNER="${{ inputs.repo-owner }}"
+        REPO="${{ inputs.repo-name }}"
+        CUSTOM_NAME="${{ inputs.environment-name }}"
+
+        # Determine environment name
+        if [ -n "$CUSTOM_NAME" ]; then
+          NAME="$CUSTOM_NAME"
+        else
+          # Determine environment name based on pattern
+          if [ "$PATTERN" = "rc" ]; then
+            NAME="staging"
+          elif [[ "$PATTERN" =~ ^pr-[0-9]+$ ]]; then
+            NAME="$PATTERN"
+          else
+            echo "Unknown pattern type: $PATTERN"
+            exit 0
+          fi
+        fi
+
+        echo "Attempting to delete environment: $NAME"
+
+        # Delete the environment
+        if gh api \
+          --method DELETE \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          "/repos/$OWNER/$REPO/environments/$NAME" 2>/dev/null; then
+          echo "✅ Successfully deleted environment: $NAME"
+        else
+          echo "⚠️  Failed to delete environment: $NAME (it may not exist or token lacks permissions)"
+        fi
+
 branding:
   icon: "trash-2"
   color: "red"
