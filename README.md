@@ -63,27 +63,28 @@ jobs:
 
 ## Inputs
 
-| Input                | Description                                                             | Required | Default                               |
-| -------------------- | ----------------------------------------------------------------------- | -------- | ------------------------------------- |
-| `pattern`            | Pattern suffix to clean (e.g., "rc", "pr-123")                          | Yes      | -                                     |
-| `versions`           | Space-separated list of versions to clean (e.g., "1.0.0-rc.1 1.0.0-rc.2"). If not specified, versions are auto-detected from git tags matching the pattern | No       | -                                     |
-| `token`              | GitHub token with permissions to delete packages and environments       | No       | `${{ github.token }}`                 |
-| `registry`           | Container registry URL                                                  | No       | `ghcr.io`                             |
-| `username`           | Username or organization (defaults to repository owner)                 | No       | `${{ github.repository_owner }}`      |
-| `repo-owner`         | Repository owner (defaults to current repo owner)                       | No       | `${{ github.repository_owner }}`      |
-| `repo-name`          | Repository name (defaults to current repo name)                         | No       | `${{ github.event.repository.name }}` |
-| `docker-image-name`  | Custom Docker image name (defaults to repo name in lowercase)           | No       | -                                     |
-| `helm-chart-name`    | Custom Helm chart name (defaults to charts/{repo-name} in lowercase)    | No       | -                                     |
-| `environment-name`   | Custom environment name (defaults to 'staging' for rc, pattern for pr-) | No       | -                                     |
-| `kube-config`        | Kubernetes config file content for kubectl access (enables K8s cleanup) | No       | -                                     |
-| `namespace`          | Kubernetes namespace for Helm release                                   | No       | `preview`                             |
-| `helm`               | Helm release name to uninstall from Kubernetes cluster                  | No       | -                                     |
+| Input               | Description                                                                                                                                                | Required | Default                               |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------- |
+| `pattern`           | Pattern suffix to clean (e.g., "rc", "pr-123")                                                                                                             | Yes      | -                                     |
+| `versions`          | Space-separated list of versions to clean (e.g., "1.0.0-rc.1 1.0.0-rc.2"). If not specified, versions are auto-detected from git tags matching the pattern | No       | -                                     |
+| `token`             | GitHub token with permissions to delete packages and environments                                                                                          | No       | `${{ github.token }}`                 |
+| `registry`          | Container registry URL                                                                                                                                     | No       | `ghcr.io`                             |
+| `username`          | Username or organization (defaults to repository owner)                                                                                                    | No       | `${{ github.repository_owner }}`      |
+| `repo-owner`        | Repository owner (defaults to current repo owner)                                                                                                          | No       | `${{ github.repository_owner }}`      |
+| `repo-name`         | Repository name (defaults to current repo name)                                                                                                            | No       | `${{ github.event.repository.name }}` |
+| `docker-image-name` | Custom Docker image name (defaults to repo name in lowercase)                                                                                              | No       | -                                     |
+| `helm-chart-name`   | Custom Helm chart name (defaults to charts/{repo-name} in lowercase)                                                                                       | No       | -                                     |
+| `chart-prefix`      | Prefix for Helm chart names (combined with repo name if helm-chart-name is not provided)                                                                   | No       | `charts`                              |
+| `environment-name`  | Custom environment name (defaults to 'staging' for rc, pattern for pr-)                                                                                    | No       | -                                     |
+| `kube-config`       | Kubernetes config file content for kubectl access (enables K8s cleanup)                                                                                    | No       | -                                     |
+| `namespace`         | Kubernetes namespace for Helm release                                                                                                                      | No       | `preview`                             |
+| `helm`              | Helm release name to uninstall from Kubernetes cluster                                                                                                     | No       | -                                     |
 
 ## Outputs
 
-| Output              | Description                                                   |
-| ------------------- | ------------------------------------------------------------- |
-| `versions`          | Space-separated list of versions that were cleaned up         |
+| Output              | Description                                                    |
+| ------------------- | -------------------------------------------------------------- |
+| `versions`          | Space-separated list of versions that were cleaned up          |
 | `versions-markdown` | Markdown-formatted bullet list of versions for GitHub comments |
 
 ## How It Works
@@ -108,10 +109,12 @@ Example: For repo `starburst997/s3-mirror-sample-app`, it cleans `ghcr.io/starbu
 
 Removes Helm charts from GHCR where:
 
-- Package name is `charts/{repo-name}` (lowercase)
+- Package name is `{chart-prefix}/{repo-name}` (lowercase), defaults to `charts/dev/{repo-name}`
 - Chart tags match the versions extracted from Git tags
 
 Example: For repo `starburst997/s3-mirror-sample-app`, it cleans `ghcr.io/starburst997/charts/s3-mirror-sample-app:{version}`
+
+The `chart-prefix` input can be customized to use a different prefix (e.g., `helm`, `charts`).
 
 ### 4. Kubernetes/Helm Cleanup (Optional)
 
