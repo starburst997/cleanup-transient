@@ -38,6 +38,10 @@ inputs:
     description: "Custom Helm chart name (defaults to charts/{repo-name} in lowercase)"
     required: false
     default: ""
+  chart-prefix:
+    description: "Prefix for Helm chart names (defaults to 'charts'). Will be combined with repo name if helm-chart-name is not provided."
+    required: false
+    default: "charts/dev"
   environment-name:
     description: "Custom environment name (defaults to 'staging' for rc, pattern for pr-XXX)"
     required: false
@@ -311,12 +315,13 @@ runs:
         VERSIONS="${{ steps.versions.outputs.versions }}"
         OWNER="${{ inputs.repo-owner }}"
         CUSTOM_CHART_NAME="${{ inputs.helm-chart-name }}"
+        CHART_PREFIX="${{ inputs.chart-prefix }}"
         REGISTRY="${{ inputs.registry }}"
 
         # Convert to lowercase
         OWNER=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
 
-        # Use custom name if provided, otherwise use charts/{repo-name}
+        # Use custom name if provided, otherwise use {chart-prefix}/{repo-name}
         if [ -n "$CUSTOM_CHART_NAME" ]; then
           # Check if custom chart name already has URL encoding
           if echo "$CUSTOM_CHART_NAME" | grep -q '%2F'; then
@@ -330,9 +335,14 @@ runs:
         else
           REPO_NAME="${{ inputs.repo-name }}"
           REPO_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]')
-          # Helm charts typically have the "charts/" prefix
-          CHART_NAME_DISPLAY="charts/$REPO_NAME"
-          CHART_NAME="charts%2F$REPO_NAME"
+
+          # Remove trailing slash from prefix if present
+          CHART_PREFIX=$(echo "$CHART_PREFIX" | sed 's/\/$//')
+
+          # Combine prefix with repo name
+          CHART_NAME_DISPLAY="$CHART_PREFIX/$REPO_NAME"
+          # URL encode forward slashes
+          CHART_NAME=$(echo "$CHART_NAME_DISPLAY" | sed 's/\//%2F/g')
         fi
 
         if [ -z "$VERSIONS" ]; then
