@@ -591,6 +591,40 @@ runs:
           echo "⚠️  Failed to delete environment: $NAME (it may not exist or token lacks permissions)"
         fi
 
+    - name: Delete Git Branch
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.ref != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+        OWNER="${{ inputs.repo-owner }}"
+        REPO="${{ inputs.repo-name }}"
+
+        echo "Attempting to delete branch: $BRANCH_NAME"
+
+        # Check if branch exists remotely
+        if gh api \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          "/repos/$OWNER/$REPO/git/ref/heads/$BRANCH_NAME" 2>/dev/null > /dev/null; then
+
+          echo "Branch exists, attempting to delete..."
+
+          # Delete the branch
+          if gh api \
+            --method DELETE \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/$OWNER/$REPO/git/refs/heads/$BRANCH_NAME" 2>/dev/null; then
+            echo "✅ Successfully deleted branch: $BRANCH_NAME"
+          else
+            echo "❌ Failed to delete branch: $BRANCH_NAME (token may lack permissions or branch is protected)"
+          fi
+        else
+          echo "⚠️  Branch not found: $BRANCH_NAME (it may have already been deleted)"
+        fi
+
 branding:
   icon: "trash-2"
   color: "red"

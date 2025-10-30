@@ -7,7 +7,8 @@ A GitHub composite action that automates the cleanup of transient deployment art
 - Deletes Git tags matching version patterns
 - Removes Docker images from GitHub Container Registry (GHCR)
 - Removes Helm charts from GHCR (with `charts/` prefix)
-- Deletes GitHub deployments
+- Deletes GitHub deployments and environments
+- Deletes Git branches (optional)
 - Optional Kubernetes/Helm cleanup (uninstall Helm releases from K8s clusters)
 - Pure bash implementation using `gh` CLI (no JavaScript dependencies)
 - Supports multiple pattern types (rc, pr-based, custom)
@@ -136,6 +137,17 @@ Deletes the GitHub deployment with the specified name:
 - Deletes the deployment
 - For `rc` pattern: deletes deployment named `staging`
 - For `pr-XXX` pattern: deletes deployment named `pr-XXX`
+
+### 6. Git Branch Deletion (Automatic for PRs)
+
+When triggered from a pull request event, the action will automatically:
+
+- Detect the PR's branch name from `github.event.pull_request.head.ref`
+- Check if the branch exists remotely
+- Delete the branch from the remote repository
+- Skip deletion if the branch doesn't exist or is protected
+
+**This step only runs when the action is triggered by a `pull_request` event and will be skipped for other event types.**
 
 ## Requirements
 
