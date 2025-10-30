@@ -80,6 +80,7 @@ jobs:
 | `kube-config`       | Kubernetes config file content for kubectl access (enables K8s cleanup)                                                                                    | No       | -                                     |
 | `namespace`         | Kubernetes namespace for Helm release                                                                                                                      | No       | `preview`                             |
 | `helm`              | Helm release name to uninstall from Kubernetes cluster                                                                                                     | No       | -                                     |
+| `bot-token`         | Alternative token for Git operation                                                                                                                        | No       | -                                     |
 
 ## Outputs
 

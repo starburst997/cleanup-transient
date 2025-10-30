@@ -58,6 +58,10 @@ inputs:
     description: "Helm release name to uninstall (used when kube-config is provided)"
     required: false
     default: ""
+  bot-token:
+    description: "Alternative token"
+    required: false
+    default: ""
 
 outputs:
   versions:
@@ -595,7 +599,7 @@ runs:
       if: github.event_name == 'pull_request' && github.event.pull_request.head.ref != ''
       shell: bash
       env:
-        GH_TOKEN: ${{ inputs.token }}
+        GH_TOKEN: ${{ inputs.bot-token || inputs.token }}
       run: |
         BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
         OWNER="${{ inputs.repo-owner }}"

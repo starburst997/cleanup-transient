@@ -358,8 +358,8 @@
         <h1>Cleanup Transient</h1>
         <p class="tagline">
           Automate cleanup of transient deployments. Remove Git tags, branches,
-          Docker images, Helm charts, Kubernetes resources, and GitHub deployments
-          with ease.
+          Docker images, Helm charts, Kubernetes resources, and GitHub
+          deployments with ease.
         </p>
         <div class="cta-buttons">
           <a
@@ -416,9 +416,7 @@
           <div class="feature">
             <div class="feature-icon">🌍</div>
             <h3>Deployments</h3>
-            <p>
-              Delete GitHub deployments, environments, and branches.
-            </p>
+            <p>Delete GitHub deployments, environments, and branches.</p>
           </div>
         </div>
       </div>
@@ -606,6 +604,12 @@
                 Default: 'staging' for rc, pattern for pr-XXX
               </div>
             </div>
+
+            <div class="param-item">
+              <div class="param-name">bot-token</div>
+              <div class="param-desc">Alternative token for Git operation</div>
+              <div class="param-default">Default: uses token input</div>
+            </div>
           </div>
 
           <div class="reference-card">
@@ -617,9 +621,7 @@
                 When triggered from a pull_request event, automatically deletes
                 the PR's branch after cleanup. No configuration needed.
               </div>
-              <div class="param-default">
-                Automatic for pull_request events
-              </div>
+              <div class="param-default">Automatic for pull_request events</div>
             </div>
           </div>
 
